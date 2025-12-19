@@ -43,15 +43,37 @@ jobs:
             # Nettoyer les vieilles images
             docker image prune -f
 
-            # Vérifier que l'app tourne
-            sleep 5
-            docker compose ps
+            # Attendre que le conteneur soit healthy
+            echo "Waiting for container to be healthy..."
+            for i in 1 2 3 4 5 6; do
+              sleep 5
+              STATUS=$(docker inspect --format='{{.State.Health.Status}}' lolobox 2>/dev/null || echo "starting")
+              echo "Container health status: $STATUS"
+              if [ "$STATUS" = "healthy" ]; then
+                echo "✅ Container is healthy!"
+                break
+              fi
+            done
 
+            docker compose ps
             echo "✅ Deployment complete!"
           ENDSSH
 
       - name: Health check
         run: |
-          sleep 10
-          curl -f https://${{ secrets.SERVER_HOST }} || exit 1
-          echo "✅ Health check passed!"
+          echo "Waiting for container to be ready..."
+          sleep 30
+
+          # Retry health check up to 5 times
+          for i in 1 2 3 4 5; do
+            echo "Health check attempt $i..."
+            if curl -sf --max-time 10 https://${{ secrets.SERVER_HOST }}; then
+              echo "✅ Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, waiting 10 seconds..."
+            sleep 10
+          done
+
+          echo "❌ Health check failed after 5 attempts"
+          exit 1
