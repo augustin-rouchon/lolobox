@@ -933,13 +933,8 @@ label {
 
 /* Mobile Calendar Layout - Jours en lignes, repas en colonnes */
 @media (max-width: 768px) {
+  /* Masquer la grille desktop */
   .calendar-grid {
-    display: block !important;
-  }
-
-  /* Masquer le header desktop */
-  .calendar-grid > .calendar-cell.header:not(.mobile-header),
-  .calendar-grid > .calendar-cell.label {
     display: none !important;
   }
 
