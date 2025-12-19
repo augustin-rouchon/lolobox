@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (will be installed in container)
+node_modules
+
+# Environment (will be mounted separately)
+.env
+server/.env
+
+# Documentation
+*.md
+docs/
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
