@@ -56,24 +56,17 @@ jobs:
             done
 
             docker compose ps
+
+            # Health check local
+            echo "Running health check..."
+            sleep 5
+            if curl -sf --max-time 10 http://localhost:3000/ > /dev/null; then
+              echo "✅ Health check passed!"
+            else
+              echo "❌ Health check failed!"
+              docker compose logs --tail 20
+              exit 1
+            fi
+
             echo "✅ Deployment complete!"
           ENDSSH
-
-      - name: Health check
-        run: |
-          echo "Waiting for container to be ready..."
-          sleep 30
-
-          # Retry health check up to 5 times
-          for i in 1 2 3 4 5; do
-            echo "Health check attempt $i..."
-            if curl -sf --max-time 10 https://${{ secrets.SERVER_HOST }}; then
-              echo "✅ Health check passed!"
-              exit 0
-            fi
-            echo "Attempt $i failed, waiting 10 seconds..."
-            sleep 10
-          done
-
-          echo "❌ Health check failed after 5 attempts"
-          exit 1
