@@ -8,21 +8,27 @@ export async function createFamily(name, constraints = {}, defaultServings = { a
   if (!user) throw new Error('Not authenticated');
 
   // Générer le code famille
-  const { data: codeResult } = await supabase.rpc('generate_family_code', { family_name: name });
+  const { data: codeResult, error: codeError } = await supabase.rpc('generate_family_code', { family_name: name });
+
+  // Si la fonction RPC n'existe pas, générer un code simple
+  const familyCode = codeResult || (name.substring(0, 6).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase());
 
   // Créer la famille
   const { data: family, error: familyError } = await supabase
     .from('families')
     .insert({
       name,
-      code: codeResult,
+      code: familyCode,
       constraints,
       default_servings: defaultServings
     })
     .select()
     .single();
 
-  if (familyError) throw familyError;
+  if (familyError) {
+    console.error('Error creating family:', familyError);
+    throw familyError;
+  }
 
   // Ajouter l'utilisateur comme membre créateur
   const { error: memberError } = await supabase
@@ -35,7 +41,10 @@ export async function createFamily(name, constraints = {}, defaultServings = { a
       role: 'admin'
     });
 
-  if (memberError) throw memberError;
+  if (memberError) {
+    console.error('Error adding member:', memberError);
+    throw memberError;
+  }
 
   return family;
 }

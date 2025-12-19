@@ -1168,25 +1168,36 @@ label {
 /* ==================== ONBOARDING PAGE ==================== */
 .onboarding-page {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   display: flex;
   flex-direction: column;
   background: #FFFFFF;
   z-index: 9999;
 }
 
-.onboarding-chat {
-  flex: 1;
+.onboarding-page .onboarding-chat,
+.onboarding-page #onboarding-chat,
+.onboarding-page #join-chat {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: #FFFFFF;
-  min-height: 0; /* Important pour flex */
 }
 
-.onboarding-chat .chat-messages {
+.onboarding-page .chat-container.onboarding-chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: #FFFFFF;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.onboarding-page .chat-messages {
   flex: 1;
   overflow-y: auto;
   padding: 1rem;
@@ -1195,25 +1206,25 @@ label {
   gap: 0.75rem;
 }
 
-.onboarding-chat .message {
+.onboarding-page .message {
   max-width: 85%;
 }
 
-.onboarding-chat .message.assistant .message-content {
+.onboarding-page .message.assistant .message-content {
   background: #E5E5EA;
   border-radius: 18px;
   border-bottom-left-radius: 4px;
   padding: 0.625rem 0.875rem;
 }
 
-.onboarding-chat .message.user .message-content {
+.onboarding-page .message.user .message-content {
   background: var(--color-primary);
   border-radius: 18px;
   border-bottom-right-radius: 4px;
   padding: 0.625rem 0.875rem;
 }
 
-.onboarding-chat .chat-input-container {
+.onboarding-page .chat-input-container {
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -1224,21 +1235,21 @@ label {
   gap: 0.5rem;
 }
 
-.onboarding-chat .chat-input {
+.onboarding-page .chat-input {
   flex: 1;
   border-radius: 20px;
   padding: 0.625rem 1rem;
   background: #FFFFFF;
   border: 1px solid #E0E0E0;
-  font-size: 16px; /* Évite le zoom sur iOS */
+  font-size: 16px;
 }
 
-.onboarding-chat .chat-input:focus {
+.onboarding-page .chat-input:focus {
   outline: none;
   border-color: var(--color-primary);
 }
 
-.onboarding-chat .chat-send {
+.onboarding-page .chat-send {
   width: 36px;
   height: 36px;
   border-radius: 50%;
