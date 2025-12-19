@@ -931,6 +931,80 @@ label {
   color: var(--color-primary-dark);
 }
 
+/* Mobile Calendar Layout - Jours en lignes, repas en colonnes */
+@media (max-width: 768px) {
+  .calendar-grid {
+    display: block !important;
+  }
+
+  /* Masquer le header desktop */
+  .calendar-grid > .calendar-cell.header:not(.mobile-header),
+  .calendar-grid > .calendar-cell.label {
+    display: none !important;
+  }
+
+  /* Afficher le layout mobile */
+  .calendar-mobile-layout {
+    display: block !important;
+  }
+
+  .calendar-mobile-day {
+    border-bottom: 2px solid var(--color-border);
+    padding: 0.75rem;
+  }
+
+  .calendar-mobile-day:last-child {
+    border-bottom: none;
+  }
+
+  .calendar-mobile-day-header {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--color-primary-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .calendar-mobile-day-date {
+    font-size: 0.85rem;
+    font-weight: normal;
+    color: var(--color-text-light);
+  }
+
+  .calendar-mobile-meals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .calendar-mobile-meal {
+    text-align: center;
+  }
+
+  .calendar-mobile-meal-label {
+    font-size: 0.75rem;
+    color: var(--color-text-light);
+    margin-bottom: 0.25rem;
+  }
+
+  .calendar-mobile-meal .meal-slot {
+    min-height: 50px;
+    font-size: 0.8rem;
+  }
+
+  .calendar-mobile-meal .meal-slot-name {
+    font-size: 0.75rem;
+  }
+}
+
+/* Desktop: masquer le layout mobile */
+@media (min-width: 769px) {
+  .calendar-mobile-layout {
+    display: none !important;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .app-header {
@@ -953,13 +1027,13 @@ label {
     padding: 1rem;
   }
 
-  .calendar-grid {
-    font-size: 0.85rem;
+  .calendar-header h2 {
+    font-size: 1rem;
   }
 
-  .calendar-cell {
-    padding: 0.5rem;
-    min-height: 80px;
+  .calendar-nav button {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
   }
 
   .recipe-view-header {

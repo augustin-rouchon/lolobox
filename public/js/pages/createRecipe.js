@@ -208,6 +208,9 @@ export function renderCreateRecipePage(container) {
 
       showToast(`Recette "${saved.name}" sauvegardée !`, 'success');
 
+      // Nettoyer la conversation de la session (recette sauvegardée avec succès)
+      chat.reset();
+
       // Afficher les options après sauvegarde
       previewContainer.innerHTML = `
         <div class="card text-center">

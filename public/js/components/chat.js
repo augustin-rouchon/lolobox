@@ -1,6 +1,45 @@
 // Composant Chat réutilisable
 import { sendChatMessage } from '../api.js';
 
+// Clé pour sessionStorage
+const CHAT_STORAGE_KEY = 'lolobox_chat_messages';
+const CHAT_PENDING_RECIPE_KEY = 'lolobox_pending_recipe';
+
+// Fonctions de persistance
+function saveToSession(messages, pendingRecipe = null) {
+  try {
+    sessionStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages));
+    if (pendingRecipe) {
+      sessionStorage.setItem(CHAT_PENDING_RECIPE_KEY, JSON.stringify(pendingRecipe));
+    }
+  } catch (e) {
+    console.warn('Could not save to sessionStorage:', e);
+  }
+}
+
+function loadFromSession() {
+  try {
+    const messages = sessionStorage.getItem(CHAT_STORAGE_KEY);
+    const pendingRecipe = sessionStorage.getItem(CHAT_PENDING_RECIPE_KEY);
+    return {
+      messages: messages ? JSON.parse(messages) : [],
+      pendingRecipe: pendingRecipe ? JSON.parse(pendingRecipe) : null
+    };
+  } catch (e) {
+    console.warn('Could not load from sessionStorage:', e);
+    return { messages: [], pendingRecipe: null };
+  }
+}
+
+function clearSession() {
+  try {
+    sessionStorage.removeItem(CHAT_STORAGE_KEY);
+    sessionStorage.removeItem(CHAT_PENDING_RECIPE_KEY);
+  } catch (e) {
+    console.warn('Could not clear sessionStorage:', e);
+  }
+}
+
 export function createChat(container, options = {}) {
   const {
     onRecipeReady = null,
@@ -8,11 +47,15 @@ export function createChat(container, options = {}) {
     initialMessage = "Qu'est-ce qui te ferait plaisir aujourd'hui ? 🍽️"
   } = options;
 
-  let messages = [];
+  // Charger l'état précédent depuis sessionStorage
+  const savedState = loadFromSession();
+  let messages = savedState.messages;
   let isLoading = false;
 
   // Rendu initial
   function render() {
+    const hasHistory = messages.length > 0;
+
     container.innerHTML = `
       <div class="chat-container">
         <div class="chat-messages" id="chat-messages">
@@ -32,12 +75,30 @@ export function createChat(container, options = {}) {
             ${isLoading ? '⏳' : '➤'}
           </button>
         </div>
+        ${hasHistory ? `
+          <button id="chat-reset" class="btn btn-sm btn-secondary mt-2" style="align-self: center;">
+            🔄 Nouvelle conversation
+          </button>
+        ` : ''}
       </div>
     `;
+
+    // Restaurer l'historique des messages dans l'UI
+    if (hasHistory) {
+      messages.forEach(msg => {
+        addMessageToUI(msg.role, msg.content, false);
+      });
+    }
+
+    // Vérifier s'il y a une recette en attente
+    if (savedState.pendingRecipe && onRecipeReady) {
+      onRecipeReady(savedState.pendingRecipe, messages);
+    }
 
     // Event listeners
     const input = container.querySelector('#chat-input');
     const sendBtn = container.querySelector('#chat-send');
+    const resetBtn = container.querySelector('#chat-reset');
 
     input.addEventListener('keypress', (e) => {
       if (e.key === 'Enter' && !isLoading) {
@@ -49,18 +110,26 @@ export function createChat(container, options = {}) {
       if (!isLoading) handleSend();
     });
 
+    if (resetBtn) {
+      resetBtn.addEventListener('click', () => {
+        reset();
+      });
+    }
+
     // Focus sur l'input
     input.focus();
   }
 
   // Ajouter un message à l'affichage
-  function addMessageToUI(role, content) {
+  function addMessageToUI(role, content, scroll = true) {
     const messagesContainer = container.querySelector('#chat-messages');
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${role}`;
     messageDiv.innerHTML = `<div class="message-content">${formatMessage(content)}</div>`;
     messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    if (scroll) {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
   }
 
   // Formater le message (markdown léger)
@@ -121,6 +190,9 @@ export function createChat(container, options = {}) {
       messages.push({ role: 'assistant', content: response.content });
       addMessageToUI('assistant', response.content);
 
+      // Sauvegarder dans sessionStorage
+      saveToSession(messages, response.recipe || null);
+
       // Vérifier si une recette est prête
       if (response.recipe && onRecipeReady) {
         onRecipeReady(response.recipe, messages);
@@ -142,6 +214,7 @@ export function createChat(container, options = {}) {
   // Réinitialiser le chat
   function reset() {
     messages = [];
+    clearSession();
     render();
   }
 

@@ -7,7 +7,7 @@ export async function renderCalendar(container, weekPlan, weekStartDate, options
   const weekDates = getWeekDates(weekStartDate);
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const meals = ['lunch', 'dinner'];
-  const mealLabels = { lunch: 'Déjeuner', dinner: 'Dîner' };
+  const mealLabels = { lunch: 'Midi', dinner: 'Soir' };
 
   // Récupérer les recettes pour chaque slot
   const slotRecipes = {};
@@ -21,8 +21,31 @@ export async function renderCalendar(container, weekPlan, weekStartDate, options
     }
   }
 
-  // Générer le HTML
+  // Helper pour générer un slot
+  function renderSlot(day, meal) {
+    const recipe = slotRecipes[day][meal];
+    const hasBatchCooking = recipe?.tags?.includes('batch-cooking');
+    const isWeekday = !['saturday', 'sunday'].includes(day);
+    const showWarning = hasBatchCooking && isWeekday;
+
+    return `
+      <div class="meal-slot ${recipe ? 'filled' : 'empty'}"
+           data-day="${day}"
+           data-meal="${meal}"
+           data-recipe-id="${recipe?.id || ''}">
+        ${recipe ? `
+          <div class="meal-slot-content">
+            <div class="meal-slot-name">${recipe.name}</div>
+            ${showWarning ? '<div style="color: var(--color-warning);">⚠️ BC</div>' : ''}
+          </div>
+        ` : '<span style="color: var(--color-text-light);">+</span>'}
+      </div>
+    `;
+  }
+
+  // Générer le HTML avec les deux layouts (desktop + mobile)
   container.innerHTML = `
+    <!-- Layout Desktop : jours en colonnes -->
     <div class="calendar-grid">
       <!-- Header -->
       <div class="calendar-cell header"></div>
@@ -38,28 +61,31 @@ export async function renderCalendar(container, weekPlan, weekStartDate, options
       <!-- Rows for each meal -->
       ${meals.map(meal => `
         <div class="calendar-cell label">${mealLabels[meal]}</div>
-        ${days.map(day => {
-          const recipe = slotRecipes[day][meal];
-          const hasBatchCooking = recipe?.tags?.includes('batch-cooking');
-          const isWeekday = !['saturday', 'sunday'].includes(day);
-          const showWarning = hasBatchCooking && isWeekday;
+        ${days.map(day => `
+          <div class="calendar-cell">
+            ${renderSlot(day, meal)}
+          </div>
+        `).join('')}
+      `).join('')}
+    </div>
 
-          return `
-            <div class="calendar-cell">
-              <div class="meal-slot ${recipe ? 'filled' : 'empty'}"
-                   data-day="${day}"
-                   data-meal="${meal}"
-                   data-recipe-id="${recipe?.id || ''}">
-                ${recipe ? `
-                  <div class="meal-slot-content">
-                    <div class="meal-slot-name">${recipe.name}</div>
-                    ${showWarning ? '<div style="color: var(--color-warning);">⚠️ BC</div>' : ''}
-                  </div>
-                ` : '<span style="color: var(--color-text-light);">+</span>'}
+    <!-- Layout Mobile : jours en lignes, repas en colonnes -->
+    <div class="calendar-mobile-layout">
+      ${days.map(day => `
+        <div class="calendar-mobile-day">
+          <div class="calendar-mobile-day-header">
+            <span>${getDayName(day)}</span>
+            <span class="calendar-mobile-day-date">${formatDateShort(weekDates[day])}</span>
+          </div>
+          <div class="calendar-mobile-meals">
+            ${meals.map(meal => `
+              <div class="calendar-mobile-meal">
+                <div class="calendar-mobile-meal-label">${mealLabels[meal]}</div>
+                ${renderSlot(day, meal)}
               </div>
-            </div>
-          `;
-        }).join('')}
+            `).join('')}
+          </div>
+        </div>
       `).join('')}
     </div>
   `;
