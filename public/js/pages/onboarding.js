@@ -27,14 +27,14 @@ function renderCreateFamily(container) {
   let step = 0;
   const steps = [
     {
-      message: "Bienvenue sur LoloBox ! 🍳\n\nJe vais t'aider à créer l'espace cuisine de ta famille. C'est rapide, promis !\n\nC'est quoi le nom de ta famille ?",
+      message: "Bienvenue sur LoloBox ! 🍳\n\nJe vais t'aider à créer ton espace cuisine. C'est rapide, promis !\n\nQuel nom veux-tu donner à ta tribu ?",
       process: (answer) => {
         familyData.name = answer.trim();
         return true;
       }
     },
     {
-      message: "Super, la famille {name} ! 👨‍👩‍👧‍👦\n\nVous êtes combien à table généralement ?\n(ex: \"2 adultes et 3 enfants\" ou juste \"4\")",
+      message: "Super, la tribu {name} ! 👨‍👩‍👧‍👦\n\nVous êtes combien à table généralement ?\n(ex: \"2 adultes et 3 enfants\" ou juste \"4\")",
       process: (answer) => {
         const nums = answer.match(/\d+/g);
         if (nums) {
