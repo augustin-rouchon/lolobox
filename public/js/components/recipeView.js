@@ -1,7 +1,6 @@
 // Composant Vue Détaillée Recette
 import { formatTime, formatDifficulty, renderStars, getCategoryEmoji, createModal, confirmDialog, showToast } from '../utils.js';
 import { updateRecipe, deleteRecipe, rateRecipe } from '../db.js';
-import { router } from '../app.js';
 
 export function renderRecipeView(container, recipe, options = {}) {
   const { onClose = null, onDelete = null, onUpdate = null } = options;
@@ -165,7 +164,7 @@ export function renderRecipeView(container, recipe, options = {}) {
       await deleteRecipe(recipe.id);
       showToast('Recette supprimée', 'success');
       if (onDelete) onDelete();
-      else router.navigate('/recipes');
+      else window.location.hash = '#/recipes';
     }
   });
 }

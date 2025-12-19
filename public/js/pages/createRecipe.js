@@ -2,7 +2,6 @@
 import { createChat } from '../components/chat.js';
 import { addRecipe } from '../db.js';
 import { showToast, formatTime } from '../utils.js';
-import { router } from '../app.js';
 
 export function renderCreateRecipePage(container) {
   let pendingRecipe = null;
@@ -228,7 +227,7 @@ export function renderCreateRecipePage(container) {
       `;
 
       previewContainer.querySelector('#view-recipe').addEventListener('click', () => {
-        router.navigate('/recipes');
+        window.location.hash = '#/recipes';
       });
 
       previewContainer.querySelector('#new-recipe').addEventListener('click', () => {
@@ -240,7 +239,7 @@ export function renderCreateRecipePage(container) {
       });
 
       previewContainer.querySelector('#go-planning').addEventListener('click', () => {
-        router.navigate('/week');
+        window.location.hash = '#/week';
       });
 
     } catch (error) {

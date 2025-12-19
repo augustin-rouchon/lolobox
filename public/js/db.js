@@ -1,235 +1,295 @@
-// Module de gestion IndexedDB
-import { mergeIngredients } from './utils.js';
+import { supabase, getFamily, getUser } from './supabase.js';
+import { smartRoundQuantity, formatQuantity, mergeIngredients } from './utils.js';
 
-const DB_NAME = 'FamilyMealPlannerDB';
-const DB_VERSION = 1;
+// ==================== FAMILIES ====================
 
-let db = null;
+export async function createFamily(name, constraints = {}, defaultServings = { adults: 2, children: 0 }) {
+  const user = getUser();
+  if (!user) throw new Error('Not authenticated');
 
-// Initialisation de la base
-export async function initDB() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+  // Générer le code famille
+  const { data: codeResult } = await supabase.rpc('generate_family_code', { family_name: name });
 
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      db = request.result;
-      resolve(db);
-    };
+  // Créer la famille
+  const { data: family, error: familyError } = await supabase
+    .from('families')
+    .insert({
+      name,
+      code: codeResult,
+      constraints,
+      default_servings: defaultServings
+    })
+    .select()
+    .single();
 
-    request.onupgradeneeded = (event) => {
-      const database = event.target.result;
+  if (familyError) throw familyError;
 
-      // Store: recipes
-      if (!database.objectStoreNames.contains('recipes')) {
-        const recipeStore = database.createObjectStore('recipes', { keyPath: 'id' });
-        recipeStore.createIndex('name', 'name', { unique: false });
-        recipeStore.createIndex('rating', 'rating', { unique: false });
-        recipeStore.createIndex('createdAt', 'createdAt', { unique: false });
-        recipeStore.createIndex('lastCooked', 'lastCooked', { unique: false });
-      }
+  // Ajouter l'utilisateur comme membre créateur
+  const { error: memberError } = await supabase
+    .from('family_members')
+    .insert({
+      family_id: family.id,
+      user_id: user.id,
+      name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Membre',
+      is_creator: true,
+      role: 'admin'
+    });
 
-      // Store: weekly_plans
-      if (!database.objectStoreNames.contains('weekly_plans')) {
-        const weekStore = database.createObjectStore('weekly_plans', { keyPath: 'id' });
-        weekStore.createIndex('weekStartDate', 'weekStartDate', { unique: true });
-      }
+  if (memberError) throw memberError;
 
-      // Store: shopping_lists
-      if (!database.objectStoreNames.contains('shopping_lists')) {
-        const shoppingStore = database.createObjectStore('shopping_lists', { keyPath: 'id' });
-        shoppingStore.createIndex('weekStartDate', 'weekStartDate', { unique: false });
-        shoppingStore.createIndex('weekPlanId', 'weekPlanId', { unique: false });
-      }
-
-      // Store: settings
-      if (!database.objectStoreNames.contains('settings')) {
-        database.createObjectStore('settings', { keyPath: 'id' });
-      }
-    };
-  });
+  return family;
 }
 
-// Générer un UUID
-function generateId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
+export async function joinFamily(invitationCode, memberName, appetite = 'normal') {
+  const user = getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  // Trouver l'invitation
+  const { data: invitation, error: invError } = await supabase
+    .from('invitations')
+    .select('*, family:families(*)')
+    .eq('code', invitationCode)
+    .is('used_at', null)
+    .gt('expires_at', new Date().toISOString())
+    .single();
+
+  if (invError || !invitation) throw new Error('Invitation invalide ou expirée');
+
+  // Rejoindre la famille
+  const { error: memberError } = await supabase
+    .from('family_members')
+    .insert({
+      family_id: invitation.family_id,
+      user_id: user.id,
+      name: memberName,
+      appetite,
+      is_creator: false
+    });
+
+  if (memberError) throw memberError;
+
+  // Marquer l'invitation comme utilisée
+  await supabase
+    .from('invitations')
+    .update({ used_at: new Date().toISOString(), used_by: user.id })
+    .eq('id', invitation.id);
+
+  return invitation.family;
+}
+
+export async function createInvitation() {
+  const family = getFamily();
+  const user = getUser();
+  if (!family || !user) throw new Error('No family');
+
+  const { data: codeResult } = await supabase.rpc('generate_invitation_code');
+
+  const { data, error } = await supabase
+    .from('invitations')
+    .insert({
+      family_id: family.id,
+      code: codeResult,
+      created_by: user.id
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return {
+    ...data,
+    link: `${window.location.origin}/#/join/${data.code}`
+  };
 }
 
 // ==================== RECIPES ====================
 
 export async function addRecipe(recipeData) {
-  const recipe = {
-    id: generateId(),
-    ...recipeData,
-    servings: recipeData.servings || {
-      adults: 3,
-      children: 3,
-      adultPortion: 1,
-      childPortion: 0.6
-    },
-    rating: null,
-    ratings: [],
-    timesCooked: 0,
-    lastCooked: null,
-    conversationHistory: recipeData.conversationHistory || [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  const family = getFamily();
+  const user = getUser();
+  if (!family || !user) throw new Error('No family');
 
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['recipes'], 'readwrite');
-    const store = transaction.objectStore('recipes');
-    const request = store.add(recipe);
+  const { data, error } = await supabase
+    .from('recipes')
+    .insert({
+      family_id: family.id,
+      created_by: user.id,
+      name: recipeData.name,
+      description: recipeData.description,
+      servings: recipeData.servings,
+      prep_time: recipeData.prepTime,
+      cook_time: recipeData.cookTime,
+      total_time: recipeData.totalTime || (recipeData.prepTime + recipeData.cookTime),
+      difficulty: recipeData.difficulty,
+      tags: recipeData.tags || [],
+      ingredients: recipeData.ingredients || [],
+      steps: recipeData.steps || [],
+      tips: recipeData.tips || [],
+      creation_chat: recipeData.conversationHistory || []
+    })
+    .select()
+    .single();
 
-    request.onsuccess = () => resolve(recipe);
-    request.onerror = () => reject(request.error);
-  });
+  if (error) throw error;
+  return data;
 }
 
 export async function getRecipe(id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['recipes'], 'readonly');
-    const store = transaction.objectStore('recipes');
-    const request = store.get(id);
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`
+      *,
+      ratings:recipe_ratings(*)
+    `)
+    .eq('id', id)
+    .single();
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  if (error) throw error;
+
+  // Calculer la note moyenne
+  if (data.ratings?.length > 0) {
+    data.averageRating = data.ratings.reduce((sum, r) => sum + r.rating, 0) / data.ratings.length;
+  }
+
+  return data;
 }
 
 export async function getAllRecipes() {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['recipes'], 'readonly');
-    const store = transaction.objectStore('recipes');
-    const request = store.getAll();
+  const family = getFamily();
+  if (!family) return [];
 
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+  const { data, error } = await supabase
+    .from('recipes')
+    .select(`
+      *,
+      ratings:recipe_ratings(rating)
+    `)
+    .eq('family_id', family.id)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  // Calculer les notes moyennes
+  return (data || []).map(recipe => {
+    if (recipe.ratings?.length > 0) {
+      recipe.averageRating = recipe.ratings.reduce((sum, r) => sum + r.rating, 0) / recipe.ratings.length;
+    }
+    return recipe;
   });
 }
 
 export async function updateRecipe(id, updates) {
-  const recipe = await getRecipe(id);
-  if (!recipe) throw new Error('Recipe not found');
+  const { data, error } = await supabase
+    .from('recipes')
+    .update({
+      name: updates.name,
+      description: updates.description,
+      servings: updates.servings,
+      prep_time: updates.prepTime,
+      cook_time: updates.cookTime,
+      total_time: updates.totalTime,
+      difficulty: updates.difficulty,
+      tags: updates.tags,
+      ingredients: updates.ingredients,
+      steps: updates.steps,
+      tips: updates.tips,
+      times_cooked: updates.timesCooked,
+      last_cooked_at: updates.lastCookedAt
+    })
+    .eq('id', id)
+    .select()
+    .single();
 
-  const updated = {
-    ...recipe,
-    ...updates,
-    updatedAt: new Date().toISOString()
-  };
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['recipes'], 'readwrite');
-    const store = transaction.objectStore('recipes');
-    const request = store.put(updated);
-
-    request.onsuccess = () => resolve(updated);
-    request.onerror = () => reject(request.error);
-  });
+  if (error) throw error;
+  return data;
 }
 
 export async function deleteRecipe(id) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['recipes'], 'readwrite');
-    const store = transaction.objectStore('recipes');
-    const request = store.delete(id);
+  const { error } = await supabase
+    .from('recipes')
+    .delete()
+    .eq('id', id);
 
-    request.onsuccess = () => resolve(true);
-    request.onerror = () => reject(request.error);
-  });
+  if (error) throw error;
+  return true;
+}
+
+export async function rateRecipe(recipeId, rating, comment = null) {
+  const user = getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('recipe_ratings')
+    .upsert({
+      recipe_id: recipeId,
+      user_id: user.id,
+      rating,
+      comment
+    }, {
+      onConflict: 'recipe_id,user_id'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
 }
 
 export async function searchRecipes(query) {
-  const all = await getAllRecipes();
-  const lowerQuery = query.toLowerCase();
+  const family = getFamily();
+  if (!family) return [];
 
-  return all.filter(recipe =>
-    recipe.name.toLowerCase().includes(lowerQuery) ||
-    recipe.ingredients.some(ing => ing.name.toLowerCase().includes(lowerQuery)) ||
-    recipe.tags.some(tag => tag.toLowerCase().includes(lowerQuery))
-  );
-}
+  const { data, error } = await supabase
+    .from('recipes')
+    .select('*')
+    .eq('family_id', family.id)
+    .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+    .order('created_at', { ascending: false });
 
-export async function rateRecipe(id, rating, comment = null) {
-  const recipe = await getRecipe(id);
-  if (!recipe) throw new Error('Recipe not found');
-
-  const newRating = {
-    date: new Date().toISOString(),
-    rating,
-    comment
-  };
-
-  const ratings = [...(recipe.ratings || []), newRating];
-  const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
-
-  return updateRecipe(id, {
-    rating: Math.round(avgRating * 10) / 10,
-    ratings
-  });
-}
-
-export async function markRecipeCooked(id) {
-  const recipe = await getRecipe(id);
-  if (!recipe) throw new Error('Recipe not found');
-
-  return updateRecipe(id, {
-    timesCooked: (recipe.timesCooked || 0) + 1,
-    lastCooked: new Date().toISOString()
-  });
+  if (error) throw error;
+  return data || [];
 }
 
 // ==================== WEEKLY PLANS ====================
 
 export async function getWeekPlan(weekStartDate) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['weekly_plans'], 'readonly');
-    const store = transaction.objectStore('weekly_plans');
-    const index = store.index('weekStartDate');
-    const request = index.get(weekStartDate);
+  const family = getFamily();
+  if (!family) return null;
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  const { data, error } = await supabase
+    .from('weekly_plans')
+    .select('*')
+    .eq('family_id', family.id)
+    .eq('week_start_date', weekStartDate)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error; // PGRST116 = not found
+  return data;
 }
 
 export async function createOrUpdateWeekPlan(weekStartDate, slots) {
-  const existing = await getWeekPlan(weekStartDate);
+  const family = getFamily();
+  if (!family) throw new Error('No family');
 
-  const plan = {
-    id: existing?.id || generateId(),
-    weekStartDate,
-    slots: slots || existing?.slots || {
-      monday: { lunch: null, dinner: null },
-      tuesday: { lunch: null, dinner: null },
-      wednesday: { lunch: null, dinner: null },
-      thursday: { lunch: null, dinner: null },
-      friday: { lunch: null, dinner: null },
-      saturday: { lunch: null, dinner: null },
-      sunday: { lunch: null, dinner: null }
-    },
-    shoppingListGenerated: existing?.shoppingListGenerated || false,
-    createdAt: existing?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
+  const { data, error } = await supabase
+    .from('weekly_plans')
+    .upsert({
+      family_id: family.id,
+      week_start_date: weekStartDate,
+      slots
+    }, {
+      onConflict: 'family_id,week_start_date'
+    })
+    .select()
+    .single();
 
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['weekly_plans'], 'readwrite');
-    const store = transaction.objectStore('weekly_plans');
-    const request = store.put(plan);
-
-    request.onsuccess = () => resolve(plan);
-    request.onerror = () => reject(request.error);
-  });
+  if (error) throw error;
+  return data;
 }
 
 export async function setMealSlot(weekStartDate, day, meal, recipeId) {
-  const plan = await getWeekPlan(weekStartDate) || {};
-  const slots = plan.slots || {
+  const plan = await getWeekPlan(weekStartDate);
+  const slots = plan?.slots || {
     monday: { lunch: null, dinner: null },
     tuesday: { lunch: null, dinner: null },
     wednesday: { lunch: null, dinner: null },
@@ -246,104 +306,24 @@ export async function setMealSlot(weekStartDate, day, meal, recipeId) {
 // ==================== SHOPPING LISTS ====================
 
 export async function getShoppingList(weekStartDate) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['shopping_lists'], 'readonly');
-    const store = transaction.objectStore('shopping_lists');
-    const index = store.index('weekStartDate');
-    const request = index.get(weekStartDate);
+  const family = getFamily();
+  if (!family) return null;
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
+  const { data, error } = await supabase
+    .from('shopping_lists')
+    .select('*')
+    .eq('family_id', family.id)
+    .eq('week_start_date', weekStartDate)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
 }
 
-export async function saveShoppingList(weekStartDate, weekPlanId, items) {
-  const existing = await getShoppingList(weekStartDate);
-
-  const list = {
-    id: existing?.id || generateId(),
-    weekPlanId,
-    weekStartDate,
-    items,
-    createdAt: existing?.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['shopping_lists'], 'readwrite');
-    const store = transaction.objectStore('shopping_lists');
-    const request = store.put(list);
-
-    request.onsuccess = () => resolve(list);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function updateShoppingItemCheck(weekStartDate, itemName, checked) {
-  const list = await getShoppingList(weekStartDate);
-  if (!list) return null;
-
-  const items = list.items.map(item =>
-    item.name === itemName ? { ...item, checked } : item
-  );
-
-  return saveShoppingList(weekStartDate, list.weekPlanId, items);
-}
-
-// ==================== SETTINGS ====================
-
-export async function getSettings() {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['settings'], 'readonly');
-    const store = transaction.objectStore('settings');
-    const request = store.get('settings');
-
-    request.onsuccess = () => {
-      resolve(request.result || {
-        id: 'settings',
-        defaultConstraints: {
-          lactoseFree: true,
-          maxPrepTime: 30,
-          familySize: { adults: 3, children: 3 }
-        },
-        categories: {
-          ingredients: ['légumes', 'fruits', 'viandes', 'poissons', 'épicerie', 'crèmerie-sans-lactose', 'surgelés', 'condiments'],
-          tags: ['rapide', 'batch-cooking', 'budget', 'italien', 'asiatique', 'français', 'végétarien', 'enfants-adorent']
-        }
-      });
-    };
-    request.onerror = () => reject(request.error);
-  });
-}
-
-export async function updateSettings(updates) {
-  const current = await getSettings();
-  const updated = { ...current, ...updates };
-
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(['settings'], 'readwrite');
-    const store = transaction.objectStore('settings');
-    const request = store.put(updated);
-
-    request.onsuccess = () => resolve(updated);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-// ==================== HELPERS ====================
-
-// Obtenir le lundi de la semaine pour une date donnée
-export function getWeekStartDate(date = new Date()) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  d.setDate(diff);
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString().split('T')[0];
-}
-
-// Agréger les ingrédients pour la liste de courses (avec arrondis intelligents)
 export async function generateShoppingListFromPlan(weekStartDate) {
+  const family = getFamily();
+  if (!family) return [];
+
   const plan = await getWeekPlan(weekStartDate);
   if (!plan) return [];
 
@@ -370,10 +350,49 @@ export async function generateShoppingListFromPlan(weekStartDate) {
   }
 
   // Fusionner et arrondir intelligemment
-  const mergedIngredients = mergeIngredients(allIngredients);
+  return mergeIngredients(allIngredients);
+}
 
-  // Trier par catégorie
-  return mergedIngredients.sort((a, b) =>
-    a.category.localeCompare(b.category)
-  );
+export async function saveShoppingList(weekStartDate, weekPlanId, items) {
+  const family = getFamily();
+  if (!family) throw new Error('No family');
+
+  const { data, error } = await supabase
+    .from('shopping_lists')
+    .upsert({
+      family_id: family.id,
+      week_plan_id: weekPlanId,
+      week_start_date: weekStartDate,
+      items
+    }, {
+      onConflict: 'family_id,week_start_date'
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateShoppingItemCheck(weekStartDate, itemIndex, checked) {
+  const list = await getShoppingList(weekStartDate);
+  if (!list) return null;
+
+  const items = [...list.items];
+  if (items[itemIndex]) {
+    items[itemIndex].checked = checked;
+  }
+
+  return saveShoppingList(weekStartDate, list.week_plan_id, items);
+}
+
+// ==================== HELPERS ====================
+
+export function getWeekStartDate(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff);
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().split('T')[0];
 }

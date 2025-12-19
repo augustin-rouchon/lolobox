@@ -2,7 +2,7 @@
 import { renderCalendar } from '../components/calendar.js';
 import { getWeekPlan, createOrUpdateWeekPlan, setMealSlot, getAllRecipes, getRecipe, getWeekStartDate, generateShoppingListFromPlan, saveShoppingList, rateRecipe } from '../db.js';
 import { getAdjacentWeek, formatDate, createModal, showToast, renderStars, getDayName } from '../utils.js';
-import { router } from '../app.js';
+
 
 export async function renderWeekPlannerPage(container) {
   let currentWeekStart = getWeekStartDate();
@@ -77,7 +77,7 @@ export async function renderWeekPlannerPage(container) {
       }
       await saveShoppingList(currentWeekStart, weekPlan.id, items);
       showToast('Liste de courses générée !', 'success');
-      router.navigate('/shopping');
+      window.location.hash = '#/shopping';
     });
 
     // Render calendar
@@ -142,11 +142,11 @@ export async function renderWeekPlannerPage(container) {
     overlay.querySelector('#cancel-select')?.addEventListener('click', close);
     overlay.querySelector('#create-new')?.addEventListener('click', () => {
       close();
-      router.navigate('/');
+      window.location.hash = '#/';
     });
     overlay.querySelector('#create-new-recipe')?.addEventListener('click', () => {
       close();
-      router.navigate('/');
+      window.location.hash = '#/';
     });
   }
 
@@ -184,7 +184,7 @@ export async function renderWeekPlannerPage(container) {
 
     overlay.querySelector('#view-recipe').addEventListener('click', () => {
       close();
-      router.navigate('/recipes');
+      window.location.hash = '#/recipes';
       // TODO: ouvrir directement la fiche de cette recette
     });
 

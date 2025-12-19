@@ -2,7 +2,7 @@
 import { renderShoppingList, generateShoppingText } from '../components/shoppingList.js';
 import { getShoppingList, updateShoppingItemCheck, getWeekStartDate, generateShoppingListFromPlan, getWeekPlan, saveShoppingList } from '../db.js';
 import { getAdjacentWeek, showToast } from '../utils.js';
-import { router } from '../app.js';
+
 
 export async function renderShoppingPage(container) {
   let currentWeekStart = getWeekStartDate();
@@ -78,7 +78,7 @@ export async function renderShoppingPage(container) {
       `;
 
       content.querySelector('#go-planning').addEventListener('click', () => {
-        router.navigate('/week');
+        window.location.hash = '#/week';
       });
 
       content.querySelector('#generate-now').addEventListener('click', async () => {

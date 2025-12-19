@@ -2,26 +2,49 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LoloBox - Planificateur de repas familial</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>LoloBox - Le livre de recettes de ta famille</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#D4A574">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="LoloBox">
+  <link rel="apple-touch-icon" href="/assets/icons/icon-152.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/icon-32.png">
+
+  <!-- Styles -->
   <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-  <header class="app-header">
+  <header class="app-header" id="app-header">
     <h1 class="logo">🍳 LoloBox</h1>
     <nav class="main-nav">
-      <a href="#/" class="nav-link active" data-page="create">+ Nouvelle Recette</a>
-      <a href="#/recipes" class="nav-link" data-page="recipes">📖 Mes Recettes</a>
+      <a href="#/" class="nav-link active" data-page="create">+ Recette</a>
+      <a href="#/recipes" class="nav-link" data-page="recipes">📖 Recettes</a>
       <a href="#/week" class="nav-link" data-page="week">📅 Semaine</a>
       <a href="#/shopping" class="nav-link" data-page="shopping">🛒 Courses</a>
     </nav>
+    <div id="user-menu-container"></div>
   </header>
 
   <main id="app-content">
-    <!-- Contenu dynamique injecté ici -->
     <div class="loading">Chargement...</div>
   </main>
 
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('SW registered'))
+        .catch(err => console.log('SW registration failed:', err));
+    }
+  </script>
+
+  <!-- App -->
   <script type="module" src="/js/app.js"></script>
 </body>
 </html>

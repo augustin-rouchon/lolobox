@@ -1,66 +1,37 @@
-# 🍳 Family Meal Planner
+# LoloBox V1
 
-Application web locale de planification de repas familiaux avec assistant IA.
+Application de planification de repas familiale avec authentification multi-famille.
 
-## Configuration requise
+## Stack Technique
 
-- Node.js 18+
-- Une clé API Anthropic
+- **Frontend**: PWA (Vanilla JS, CSS, HTML)
+- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
+- **Auth**: Google Sign-in
+- **AI**: Claude API via Edge Function
 
-## Installation
+## Fonctionnalites
+
+- Authentification Google
+- Systeme multi-famille avec invitations
+- Creation de recettes assistee par IA
+- Planification hebdomadaire des repas
+- Liste de courses automatique
+- Gestion des portions (adultes/enfants)
+
+## Deploiement
+
+Le deploiement est automatique via GitHub Actions vers Hetzner.
 
 ```bash
-cd family-meal-planner
-
-# Installer les dépendances
+# Local
 npm install
-
-# Configurer la clé API
-# Éditer server/.env et remplacer "your-api-key-here" par ta vraie clé API
-```
-
-## Lancement
-
-```bash
-# Mode développement (avec auto-reload)
-npm run dev
-
-# Mode production
 npm start
+# -> http://localhost:3000
 ```
 
-Puis ouvrir http://localhost:3000
+## Configuration Supabase
 
-## Fonctionnalités
-
-1. **Création de recette** - Chat IA pour générer des recettes personnalisées
-2. **Index des recettes** - Liste avec filtres, recherche, notation
-3. **Planning semaine** - Calendrier 7 jours × 2 repas (midi/soir)
-4. **Liste de courses** - Génération automatique depuis le planning
-
-## Structure du projet
-
-```
-family-meal-planner/
-├── server/
-│   ├── index.js        # Serveur Express + proxy API Claude
-│   └── .env            # Clé API (à configurer)
-├── public/
-│   ├── index.html      # Page principale
-│   ├── css/styles.css  # Styles
-│   └── js/
-│       ├── app.js      # Router principal
-│       ├── db.js       # IndexedDB
-│       ├── api.js      # Communication serveur
-│       ├── utils.js    # Helpers
-│       ├── components/ # Composants UI
-│       └── pages/      # Pages de l'application
-└── package.json
-```
-
-## Contexte familial
-
-- **Famille** : 3 adultes + 3 enfants
-- **Portions enfants** : 60% d'une portion adulte
-- **Contrainte** : Sans lactose par défaut
-- **Philosophie** : Recettes rapides (~30 min) ou "Batch Cooking"
+1. Creer un projet Supabase
+2. Executer `supabase/schema.sql` dans l'editeur SQL
+3. Configurer Google OAuth dans Authentication > Providers
+4. Deployer l'Edge Function `chat` pour l'IA

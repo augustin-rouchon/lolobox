@@ -1,9 +1,12 @@
 // Page Index des Recettes
-import { getAllRecipes, searchRecipes, getSettings } from '../db.js';
+import { getAllRecipes, searchRecipes } from '../db.js';
 import { recipeCardHTML } from '../components/recipeCard.js';
 import { renderRecipeView } from '../components/recipeView.js';
 import { debounce } from '../utils.js';
-import { router } from '../app.js';
+
+// Tags par défaut
+const DEFAULT_TAGS = ['rapide', 'batch-cooking', 'enfants-adorent', 'végétarien', 'sans-gluten'];
+
 
 export async function renderRecipeIndexPage(container) {
   let recipes = [];
@@ -83,7 +86,7 @@ export async function renderRecipeIndexPage(container) {
       `;
 
       listContainer.querySelector('#create-first')?.addEventListener('click', () => {
-        router.navigate('/');
+        window.location.hash = '#/';
       });
       return;
     }
@@ -150,8 +153,7 @@ export async function renderRecipeIndexPage(container) {
   }
 
   // Rendu initial
-  const settings = await getSettings();
-  const allTags = settings.categories?.tags || [];
+  const allTags = DEFAULT_TAGS;
 
   container.innerHTML = `
     <div id="main-content">
@@ -197,7 +199,7 @@ export async function renderRecipeIndexPage(container) {
 
   // Event listeners
   container.querySelector('#add-recipe-btn').addEventListener('click', () => {
-    router.navigate('/');
+    window.location.hash = '#/';
   });
 
   const searchInput = container.querySelector('#search-input');
