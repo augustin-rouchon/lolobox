@@ -1,4 +1,6 @@
 // Module de gestion IndexedDB
+import { mergeIngredients } from './utils.js';
+
 const DB_NAME = 'FamilyMealPlannerDB';
 const DB_VERSION = 1;
 
@@ -340,12 +342,12 @@ export function getWeekStartDate(date = new Date()) {
   return d.toISOString().split('T')[0];
 }
 
-// Agréger les ingrédients pour la liste de courses
+// Agréger les ingrédients pour la liste de courses (avec arrondis intelligents)
 export async function generateShoppingListFromPlan(weekStartDate) {
   const plan = await getWeekPlan(weekStartDate);
   if (!plan) return [];
 
-  const ingredients = {};
+  const allIngredients = [];
   const recipeIds = new Set();
 
   // Collecter tous les IDs de recettes
@@ -354,34 +356,24 @@ export async function generateShoppingListFromPlan(weekStartDate) {
     if (day.dinner) recipeIds.add(day.dinner);
   });
 
-  // Récupérer et agréger les ingrédients
+  // Récupérer les ingrédients de chaque recette
   for (const recipeId of recipeIds) {
     const recipe = await getRecipe(recipeId);
     if (!recipe) continue;
 
     recipe.ingredients.forEach(ing => {
-      const key = `${ing.name.toLowerCase()}_${ing.unit}`;
-
-      if (ingredients[key]) {
-        ingredients[key].quantity += ing.quantity;
-        if (!ingredients[key].fromRecipes.includes(recipe.name)) {
-          ingredients[key].fromRecipes.push(recipe.name);
-        }
-      } else {
-        ingredients[key] = {
-          name: ing.name,
-          quantity: ing.quantity,
-          unit: ing.unit,
-          category: ing.category,
-          checked: false,
-          fromRecipes: [recipe.name]
-        };
-      }
+      allIngredients.push({
+        ...ing,
+        fromRecipe: recipe.name
+      });
     });
   }
 
-  // Convertir en array et trier par catégorie
-  return Object.values(ingredients).sort((a, b) =>
+  // Fusionner et arrondir intelligemment
+  const mergedIngredients = mergeIngredients(allIngredients);
+
+  // Trier par catégorie
+  return mergedIngredients.sort((a, b) =>
     a.category.localeCompare(b.category)
   );
 }

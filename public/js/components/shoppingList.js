@@ -1,5 +1,5 @@
 // Composant Liste de Courses
-import { getCategoryEmoji } from '../utils.js';
+import { getCategoryEmoji, formatQuantity } from '../utils.js';
 
 export function renderShoppingList(container, items, options = {}) {
   const { onItemCheck = null, weekStartDate = '' } = options;
@@ -25,7 +25,7 @@ export function renderShoppingList(container, items, options = {}) {
             <div class="shopping-item ${item.checked ? 'checked' : ''}" data-item-name="${item.name}">
               <input type="checkbox" ${item.checked ? 'checked' : ''}>
               <span class="shopping-item-name">
-                <strong>${item.quantity} ${item.unit}</strong> ${item.name}
+                <strong>${item.displayQuantity || formatQuantity(item.quantity, item.unit)}</strong> ${item.name}
               </span>
               <span class="shopping-item-recipes">${item.fromRecipes?.join(', ') || ''}</span>
             </div>
@@ -65,7 +65,8 @@ export function generateShoppingText(items, weekLabel = '') {
   Object.keys(byCategory).sort().forEach(category => {
     text += `${getCategoryEmoji(category)} ${category.toUpperCase()}\n`;
     byCategory[category].forEach(item => {
-      text += `  □ ${item.quantity} ${item.unit} ${item.name}\n`;
+      const qty = item.displayQuantity || formatQuantity(item.quantity, item.unit);
+      text += `  □ ${qty} ${item.name}\n`;
     });
     text += '\n';
   });

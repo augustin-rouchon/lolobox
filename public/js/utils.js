@@ -174,6 +174,152 @@ export function confirmDialog(message) {
   });
 }
 
+// ==================== SMART QUANTITY ROUNDING ====================
+
+/**
+ * Arrondit une quantité de manière intelligente selon l'unité
+ * @param {number} quantity - La quantité brute
+ * @param {string} unit - L'unité de mesure
+ * @returns {number} - La quantité arrondie de manière pratique
+ */
+export function smartRoundQuantity(quantity, unit) {
+  // Unités qui doivent toujours être entières
+  const wholeUnits = ['pièces', 'pièce', 'boîte', 'boîtes', 'brique', 'briques',
+                      'tranche', 'tranches', 'gousse', 'gousses', 'branche',
+                      'branches', 'bouquet', 'bouquets', 'sachet', 'sachets'];
+
+  // Unités où on arrondit au 0.5 près
+  const halfUnits = ['càs', 'càc'];
+
+  // Unités où on arrondit à des valeurs pratiques
+  const practicalUnits = {
+    'g': [5, 10, 25, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 750, 800, 900, 1000],
+    'kg': [0.5, 1, 1.5, 2, 2.5, 3],
+    'ml': [10, 25, 50, 100, 150, 200, 250, 300, 400, 500, 750, 1000],
+    'cl': [5, 10, 15, 20, 25, 33, 50, 75, 100],
+    'L': [0.5, 1, 1.5, 2, 2.5, 3]
+  };
+
+  const unitLower = unit.toLowerCase();
+
+  // Unités entières
+  if (wholeUnits.includes(unitLower)) {
+    return Math.ceil(quantity);
+  }
+
+  // Unités au demi
+  if (halfUnits.includes(unitLower)) {
+    return Math.ceil(quantity * 2) / 2;
+  }
+
+  // Unités pratiques
+  if (practicalUnits[unitLower]) {
+    const values = practicalUnits[unitLower];
+    // Trouve la valeur pratique la plus proche (en arrondissant vers le haut)
+    for (const val of values) {
+      if (val >= quantity) {
+        return val;
+      }
+    }
+    // Si on dépasse toutes les valeurs, arrondir à la dizaine/centaine supérieure
+    if (unitLower === 'g') {
+      return Math.ceil(quantity / 50) * 50;
+    }
+    return Math.ceil(quantity);
+  }
+
+  // Par défaut, arrondir au supérieur
+  return Math.ceil(quantity);
+}
+
+/**
+ * Formate une quantité avec son unité de manière lisible
+ * @param {number} quantity
+ * @param {string} unit
+ * @returns {string}
+ */
+export function formatQuantity(quantity, unit) {
+  const rounded = smartRoundQuantity(quantity, unit);
+
+  // Gestion du singulier/pluriel
+  const pluralMap = {
+    'pièce': 'pièces',
+    'boîte': 'boîtes',
+    'brique': 'briques',
+    'tranche': 'tranches',
+    'gousse': 'gousses',
+    'branche': 'branches',
+    'bouquet': 'bouquets',
+    'sachet': 'sachets'
+  };
+
+  let displayUnit = unit;
+  if (rounded === 1) {
+    // Mettre au singulier si nécessaire
+    for (const [singular, plural] of Object.entries(pluralMap)) {
+      if (unit === plural) {
+        displayUnit = singular;
+        break;
+      }
+    }
+  } else if (rounded > 1) {
+    // Mettre au pluriel si nécessaire
+    for (const [singular, plural] of Object.entries(pluralMap)) {
+      if (unit === singular) {
+        displayUnit = plural;
+        break;
+      }
+    }
+  }
+
+  // Formatage du nombre
+  let displayQuantity;
+  if (Number.isInteger(rounded)) {
+    displayQuantity = rounded.toString();
+  } else {
+    displayQuantity = rounded.toFixed(1).replace('.0', '');
+  }
+
+  return `${displayQuantity} ${displayUnit}`;
+}
+
+/**
+ * Fusionne intelligemment des ingrédients identiques
+ * @param {Array} ingredientsList - Liste d'ingrédients de plusieurs recettes
+ * @returns {Array} - Liste fusionnée et arrondie
+ */
+export function mergeIngredients(ingredientsList) {
+  const merged = {};
+
+  for (const ing of ingredientsList) {
+    // Clé de fusion : nom normalisé + unité
+    const key = `${ing.name.toLowerCase().trim()}_${ing.unit.toLowerCase()}`;
+
+    if (merged[key]) {
+      merged[key].quantity += ing.quantity;
+      if (ing.fromRecipe && !merged[key].fromRecipes.includes(ing.fromRecipe)) {
+        merged[key].fromRecipes.push(ing.fromRecipe);
+      }
+    } else {
+      merged[key] = {
+        name: ing.name,
+        quantity: ing.quantity,
+        unit: ing.unit,
+        category: ing.category,
+        checked: false,
+        fromRecipes: ing.fromRecipe ? [ing.fromRecipe] : []
+      };
+    }
+  }
+
+  // Arrondir les quantités et retourner
+  return Object.values(merged).map(ing => ({
+    ...ing,
+    quantity: smartRoundQuantity(ing.quantity, ing.unit),
+    displayQuantity: formatQuantity(ing.quantity, ing.unit)
+  }));
+}
+
 // Toast notification
 export function showToast(message, type = 'info') {
   const toast = document.createElement('div');
