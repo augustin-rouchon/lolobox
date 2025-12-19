@@ -90,6 +90,14 @@ body {
   min-height: calc(100vh - 80px);
 }
 
+/* Fullscreen mode (no header, no padding) */
+#app-content.fullscreen {
+  max-width: 100%;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 /* Loading */
 .loading {
   display: flex;
@@ -1159,49 +1167,72 @@ label {
 
 /* ==================== ONBOARDING PAGE ==================== */
 .onboarding-page {
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh; /* Dynamic viewport height pour mobile */
   display: flex;
   flex-direction: column;
   background: var(--color-surface);
+  overflow: hidden;
 }
 
 .onboarding-chat {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-height: 100vh;
   background: var(--color-surface);
   border-radius: 0;
   box-shadow: none;
+  overflow: hidden;
 }
 
 .onboarding-chat .chat-messages {
   flex: 1;
-  padding: 2rem;
-  padding-bottom: 1rem;
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.onboarding-chat .message {
+  max-width: 80%;
+}
+
+.onboarding-chat .message.assistant .message-content {
+  background: #E8E8E8;
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  padding: 0.75rem 1rem;
+}
+
+.onboarding-chat .message.user .message-content {
+  background: var(--color-primary);
+  border-radius: 18px;
+  border-bottom-right-radius: 4px;
+  padding: 0.75rem 1rem;
 }
 
 .onboarding-chat .chat-input-container {
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
-  padding: 1rem 2rem 2rem;
-  border-top: none;
-  background: transparent;
+  padding: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
+  gap: 0.75rem;
 }
 
-@media (max-width: 768px) {
-  .onboarding-chat .chat-messages {
-    padding: 1rem;
-  }
+.onboarding-chat .chat-input {
+  border-radius: 24px;
+  padding: 0.75rem 1.25rem;
+  background: #F0F0F0;
+  border: none;
+}
 
-  .onboarding-chat .chat-input-container {
-    padding: 1rem;
-  }
+.onboarding-chat .chat-input:focus {
+  background: #E8E8E8;
+  outline: none;
+}
+
+.onboarding-chat .chat-send {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  padding: 0;
 }
 
 /* ==================== USER MENU ==================== */

@@ -130,12 +130,16 @@ function getContent() {
 
 function hideHeader() {
   document.getElementById('app-header').style.display = 'none';
-  document.getElementById('app-content').style.minHeight = '100vh';
+  const content = document.getElementById('app-content');
+  content.style.minHeight = '100vh';
+  content.classList.add('fullscreen');
 }
 
 function showHeader() {
   document.getElementById('app-header').style.display = 'flex';
-  document.getElementById('app-content').style.minHeight = 'calc(100vh - 80px)';
+  const content = document.getElementById('app-content');
+  content.style.minHeight = 'calc(100vh - 80px)';
+  content.classList.remove('fullscreen');
   updateUserMenu();
 }
 
