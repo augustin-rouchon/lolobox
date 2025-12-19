@@ -12,9 +12,7 @@ export function renderOnboardingPage(container, inviteCode = null) {
 function renderCreateFamily(container) {
   container.innerHTML = `
     <div class="onboarding-page">
-      <div class="onboarding-card">
-        <div id="onboarding-chat"></div>
-      </div>
+      <div id="onboarding-chat"></div>
     </div>
   `;
 
@@ -112,9 +110,7 @@ function renderCreateFamily(container) {
 function renderJoinFamily(container, inviteCode) {
   container.innerHTML = `
     <div class="onboarding-page">
-      <div class="onboarding-card">
-        <div id="join-chat"></div>
-      </div>
+      <div id="join-chat"></div>
     </div>
   `;
 
