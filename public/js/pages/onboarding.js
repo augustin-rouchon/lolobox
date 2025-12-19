@@ -94,7 +94,7 @@ function renderCreateFamily(container) {
           };
         } catch (error) {
           console.error('Error creating family:', error);
-          return { text: "Oups, une erreur s'est produite. Réessaie !" };
+          return { text: `Oups ! ${error.message || "Une erreur s'est produite."}` };
         }
       }
     },
