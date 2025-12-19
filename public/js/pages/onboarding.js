@@ -184,17 +184,20 @@ function renderJoinFamily(container, inviteCode) {
 function createOnboardingChat(container, options) {
   const { initialMessage, onUserMessage, onComplete } = options;
 
+  // Template simple et propre - 2 éléments: messages + input
   container.innerHTML = `
-    <div class="chat-container onboarding-chat">
-      <div class="chat-messages" id="chat-messages">
-        <div class="message assistant">
-          <div class="message-content">${initialMessage.replace(/\n/g, '<br>')}</div>
-        </div>
+    <div class="onboarding-messages" id="chat-messages">
+      <div class="onboarding-bubble assistant">
+        ${initialMessage.replace(/\n/g, '<br>')}
       </div>
-      <div class="chat-input-container">
-        <input type="text" id="chat-input" class="chat-input" placeholder="Ta réponse...">
-        <button id="chat-send" class="btn btn-primary chat-send">➤</button>
-      </div>
+    </div>
+    <div class="onboarding-input-bar">
+      <input type="text" id="chat-input" placeholder="Ta réponse..." autocomplete="off">
+      <button id="chat-send">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+        </svg>
+      </button>
     </div>
   `;
 
@@ -204,8 +207,8 @@ function createOnboardingChat(container, options) {
 
   function addMessage(role, content) {
     const div = document.createElement('div');
-    div.className = `message ${role}`;
-    div.innerHTML = `<div class="message-content">${content.replace(/\n/g, '<br>')}</div>`;
+    div.className = `onboarding-bubble ${role}`;
+    div.innerHTML = content.replace(/\n/g, '<br>');
     messagesContainer.appendChild(div);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
   }
